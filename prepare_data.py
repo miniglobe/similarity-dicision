@@ -12,8 +12,8 @@ STORAGE_STORE_KEY_PATH = "/home/vagrant/.json_keys/persian-efe392f65854.json"
 BUCKET_NAME = "persian-172808.appspot.com"
 
 params = {
-  "thumnail_width": 200
-  , "thumnail_height": 200
+  "thumnail_width": 180
+  , "thumnail_height": 180
   , "width": 128
   , "height": 128
 }
