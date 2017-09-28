@@ -26,8 +26,6 @@ def main():
   writer = tf.python_io.TFRecordWriter(record_file)
   offset = 0
   lst = list(query.fetch(limit=100, offset=offset))
-  max_len = 0
-  char_set = set()
   while lst:
     for obj in lst:
       image = download_image(obj["image_url"])
