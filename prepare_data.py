@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import tensorflow
+import tensorflow as tf
 from google.cloud import datastore
 import urllib.request
 from PIL import Image
@@ -10,6 +10,7 @@ PROJECT_ID = "persian-172808"
 DATA_STORE_KEY_PATH = "/home/vagrant/.json_keys/persian-3a9988725cae.json"
 STORAGE_STORE_KEY_PATH = "/home/vagrant/.json_keys/persian-efe392f65854.json"
 BUCKET_NAME = "persian-172808.appspot.com"
+record_file = './data/blog_data.tfrecords'
 
 params = {
   "thumnail_width": 180
@@ -22,16 +23,26 @@ params = {
 def main():
   datastore_client = datastore.Client.from_service_account_json(DATA_STORE_KEY_PATH, project=PROJECT_ID)
   query = datastore_client.query(kind='blog_data')
+  writer = tf.python_io.TFRecordWriter(record_file)
   offset = 0
   lst = list(query.fetch(limit=100, offset=offset))
-  image = download_image(lst[0]["image_url"])
-  image = crop_image(image)
-  image.save('hogehoge.png')
-  
-  # while lst:
-  #   print(len(lst))
-  #   offset += 100
-  #   lst = list(query.fetch(limit=100, offset=offset))
+  max_len = 0
+  char_set = set()
+  while lst:
+    for obj in lst:
+      image = download_image(obj["image_url"])
+      image = crop_image(image)
+      width, height = image.size
+      text = obj['text']
+      record = tf.train.Example(features=tf.train.Features(feature={
+        'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img])),
+        'height': tf.train.Feature(int64_list=tf.train.Int64List(value=[height])),
+        'width': tf.train.Feature(int64_list=tf.train.Int64List(value=[width])),
+        'depth': tf.train.Feature(int64_list=tf.train.Int64List(value=[3])),
+        'text': tf.train.Feature(bytes_list=tf.train.BytesList(value=[text.encode('utf-8')]))
+      }))
+      char_set |= set(list())
+      
 
 
 def download_image(url):
