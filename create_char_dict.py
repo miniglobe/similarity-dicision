@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-
+import csv
 from google.cloud import datastore
-
+from collections import defaultdict
 
 PROJECT_ID = "persian-172808"
 DATA_STORE_KEY_PATH = "/home/vagrant/.json_keys/persian-3a9988725cae.json"
@@ -13,10 +13,11 @@ def main():
   query = datastore_client.query(kind='blog_data')
   offset = 0
   lst = list(query.fetch())
-  s = set()
+  chars = defaultdict(int)
   lengths = []
   for obj in lst:
-    s |= set(list(obj['text']))
+    for c in obj['text']:
+      chars[c] += 1
     lengths.append(len(obj['text']))
   
   with open('./data/text_len.txt', 'w') as f:
@@ -24,8 +25,10 @@ def main():
       f.write(str(l) + '\n')
 
   with open('./data/char_dict.txt', 'w') as f:
-    for c in s:
-      f.write(c + '\n')
+    writer = csv.writer(f, lineterminator='\n')
+    for i in chars.items():
+      writer.writerow(i)
+      
 
 if __name__ == '__main__':
   main()
