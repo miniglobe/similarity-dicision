@@ -2,6 +2,7 @@
 
 import tensorflow as tf
 from google.cloud import datastore
+import numpy as np
 import urllib.request
 from PIL import Image
 import io
@@ -19,28 +20,44 @@ params = {
   , "height": 128
 }
 
+_UNK_ID = 1
+_PAD_ID = 0
+MAX_LEN = 5000
 
 def main():
   datastore_client = datastore.Client.from_service_account_json(DATA_STORE_KEY_PATH, project=PROJECT_ID)
   query = datastore_client.query(kind='blog_data')
   writer = tf.python_io.TFRecordWriter(record_file)
   offset = 0
-  lst = list(query.fetch(limit=100, offset=offset))
-  while lst:
-    for obj in lst:
-      image = download_image(obj["image_url"])
-      image = crop_image(image)
-      width, height = image.size
-      text = obj['text']
-      record = tf.train.Example(features=tf.train.Features(feature={
-        'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img])),
-        'height': tf.train.Feature(int64_list=tf.train.Int64List(value=[height])),
-        'width': tf.train.Feature(int64_list=tf.train.Int64List(value=[width])),
-        'depth': tf.train.Feature(int64_list=tf.train.Int64List(value=[3])),
-        'text': tf.train.Feature(bytes_list=tf.train.BytesList(value=[text.encode('utf-8')]))
-      }))
-      char_set |= set(list())
-      
+  lst = list(query.fetch())
+  char_dict = load_char_dict()
+  for obj in lst:
+    image = download_image(obj["image_url"])
+    image = crop_image(image)
+    output = io.BytesIO()
+    image.save(output, format='PNG')
+    output = output.getvalue()
+    width, height = image.size
+    ids = text2ids(obj['text'], char_dict)
+    record = tf.train.Example(features=tf.train.Features(feature={
+      'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[output])),
+      'height': tf.train.Feature(int64_list=tf.train.Int64List(value=[height])),
+      'width': tf.train.Feature(int64_list=tf.train.Int64List(value=[width])),
+      'depth': tf.train.Feature(int64_list=tf.train.Int64List(value=[3])),
+      'text': tf.train.Feature(int64_list=tf.train.Int64List(value=ids))
+    }))
+    writer.write(record.SerializeToString())
+
+
+def text2ids(text, char_dict):
+  ids =  list(map(lambda c: char_dict[c] if c in char_dict else _UNK_ID, text[:MAX_LEN]))
+  ids = ids + [_PAD_ID for _ in range(MAX_LEN - len(ids))]
+
+
+def load_char_dict():
+  with open('./config/all_chars.csv') as f:
+    # _PADと＿UNKの分
+    return {c.strip():i+2 for i, c in enumerate(f)}
 
 
 def download_image(url):
