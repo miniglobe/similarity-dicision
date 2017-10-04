@@ -24,29 +24,39 @@ _UNK_ID = 1
 _PAD_ID = 0
 MAX_LEN = 5000
 
+datastore_client = datastore.Client.from_service_account_json(DATA_STORE_KEY_PATH, project=PROJECT_ID)
+
+
 def main():
-  datastore_client = datastore.Client.from_service_account_json(DATA_STORE_KEY_PATH, project=PROJECT_ID)
-  query = datastore_client.query(kind='blog_data')
   writer = tf.python_io.TFRecordWriter(record_file)
-  offset = 0
-  lst = list(query.fetch())
-  char_dict = load_char_dict()
-  for obj in lst:
-    image = download_image(obj["image_url"])
-    image = crop_image(image)
-    output = io.BytesIO()
-    image.save(output, format='PNG')
-    output = output.getvalue()
-    width, height = image.size
-    ids = text2ids(obj['text'], char_dict)
-    record = tf.train.Example(features=tf.train.Features(feature={
-      'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[output])),
-      'height': tf.train.Feature(int64_list=tf.train.Int64List(value=[height])),
-      'width': tf.train.Feature(int64_list=tf.train.Int64List(value=[width])),
-      'depth': tf.train.Feature(int64_list=tf.train.Int64List(value=[3])),
-      'text': tf.train.Feature(int64_list=tf.train.Int64List(value=ids))
-    }))
-    writer.write(record.SerializeToString())
+  lst, cursor = next_data()
+  while lst:
+    for obj in lst:
+      image = download_image(obj["image_url"])
+      image = crop_image(image)
+      output = io.BytesIO()
+      image.save(output, format='PNG')
+      output = output.getvalue()
+      width, height = image.size
+      ids = text2ids(obj['text'], char_dict)
+      record = tf.train.Example(features=tf.train.Features(feature={
+        'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[output])),
+        'height': tf.train.Feature(int64_list=tf.train.Int64List(value=[height])),
+        'width': tf.train.Feature(int64_list=tf.train.Int64List(value=[width])),
+        'depth': tf.train.Feature(int64_list=tf.train.Int64List(value=[3])),
+        'text': tf.train.Feature(int64_list=tf.train.Int64List(value=ids))
+      }))
+      writer.write(record.SerializeToString())
+    lst, cursor = next_data(cursor)
+
+
+def next_data(cursor=None):
+  query = datastore_client.query(kind='blog_data')
+  query_iter = query.fetch(start_cursor=cursor, limit=300)
+  page = next(query_iter.pages)
+  next_cursor = query_iter.next_page_token
+  data = list(page)
+  return data, next_cursor
 
 
 def text2ids(text, char_dict):
