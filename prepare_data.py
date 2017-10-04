@@ -52,6 +52,7 @@ def main():
 def text2ids(text, char_dict):
   ids =  list(map(lambda c: char_dict[c] if c in char_dict else _UNK_ID, text[:MAX_LEN]))
   ids = ids + [_PAD_ID for _ in range(MAX_LEN - len(ids))]
+  return ids
 
 
 def load_char_dict():
