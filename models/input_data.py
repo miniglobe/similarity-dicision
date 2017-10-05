@@ -11,7 +11,7 @@ def get_batch(batch_size):
     'width': tf.FixedLenFeature([], tf.int64),
     'height': tf.FixedLenFeature([], tf.int64),
     'depth': tf.FixedLenFeature([], tf.int64),
-    'text': tf.FixedLenFeature([], tf.int64)
+    'text': tf.FixedLenFeature([5000], tf.int64)
   })
 
 
